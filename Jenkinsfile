@@ -1,72 +1,100 @@
+
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    IMAGE_NAME = "shradha91103/netflix-ui-clone"
-    IMAGE_TAG  = "${BUILD_NUMBER}"
-  }
-
-  stages {
-
-    stage('Checkout Code') {
-      steps {
-        checkout scm
-      }
-    }
-
-    stage('Build Docker Image') {
-      steps {
-        sh '''
-          docker build --no-cache \
-            -t $IMAGE_NAME:$IMAGE_TAG \
-            -t $IMAGE_NAME:latest \
-            .
-        '''
-      }
-    }
-
-    stage('Verify Image') {
-      steps {
-        sh '''
-          docker images --format "{{.Repository}}:{{.Tag}}" | grep netflix-ui-clone || true
-        '''
-      }
-    }
-
-    stage('Security Scan - Trivy') {
-      steps {
-        sh '''
-          trivy image $IMAGE_NAME:$IMAGE_TAG || true
-        '''
-      }
-    }
-
-    stage('Push Image to DockerHub') {
-      steps {
-        withCredentials([
-          usernamePassword(
-            credentialsId: 'dockerhub-creds',
-            usernameVariable: 'DOCKER_USER',
-            passwordVariable: 'DOCKER_PASS'
-          )
-        ]) {
-          sh '''
-            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-
-            docker push $IMAGE_NAME:$IMAGE_TAG
-            docker push $IMAGE_NAME:latest
-
-            docker logout
-          '''
-        }
-      }
-    }
-  }
-
-  post {
-    always {
-      sh 'docker image prune -f'
-    }
-  }
+environment {
+    AWS_ACCESS_KEY_ID     = credentials('aws-access-key')
+    AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+    ECR_REPO = credentials('ecr-url')
+    SONAR_AUTH_TOKEN = credentials('sonar-token')
+    IMAGE_NAME = "netflix-app"
+    TAG = "latest"
 }
 
+    stages {
+
+        stage('Clone Repo') {
+            steps {
+                git branch: 'main', url: 'https://github.com/AtharvBarge24/Netflix-App.git'
+            }
+        }
+
+        stage('SonarQube Scan') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                    sonar-scanner \
+                      -Dsonar.projectKey=netflix-app \
+                      -Dsonar.sources=. \
+                      -Dsonar.host.url=http://sonarqube:9000 \
+                      -Dsonar.login=$SONAR_AUTH_TOKEN
+                    '''
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t $IMAGE_NAME:$TAG .
+                docker tag $IMAGE_NAME:$TAG $ECR_REPO/$IMAGE_NAME:$TAG
+                '''
+            }
+        }
+
+        stage('Login to ECR') {
+            steps {
+                sh '''
+                aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                aws configure set region us-west-1
+                aws ecr get-login-password --region us-west-1 | docker login --username AWS --password-stdin $ECR_REPO
+                '''
+            }
+        }
+
+        stage('Push Image to ECR') {
+            steps {
+                sh '''
+                docker push $ECR_REPO/$IMAGE_NAME:$TAG
+                '''
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                sh '''
+                docker system prune -af
+                rm -rf *
+                '''
+            }
+        }
+    }
+}
+
+
+// pipeline {
+//     agent any
+
+//     environment {
+//         scannerHome = tool 'SonarScanner'
+//     }
+
+//     stages {
+//         stage('Checkout') {
+//             steps {
+//                 checkout scm
+//             }
+//         }
+
+//         stage('Sonar Scan') {
+//             steps {
+//                 withSonarQubeEnv('SonarQube') {
+//                     sh '''
+//                     $scannerHome/bin/sonar-scanner
+//                     '''
+//                 }
+//             }
+//         }
+//     }
+// }

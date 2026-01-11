@@ -15,7 +15,6 @@ spec:
     spec:
       containers:
         - name: netflix-ui
-          image: shradha91103/netflix-ui-clone:local
+          image: 590183809233.dkr.ecr.us-west-1.amazonaws.com/netflix-app:latest
           ports:
             - containerPort: 3000
-
