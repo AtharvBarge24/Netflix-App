@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netflix-ui
+  namespace: netflix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: netflix-ui
+  template:
+    metadata:
+      labels:
+        app: netflix-ui
+    spec:
+      containers:
+        - name: netflix-ui
+          image: 590183809233.dkr.ecr.us-west-1.amazonaws.com/netflix-app
+          ports:
+            - containerPort: 3000

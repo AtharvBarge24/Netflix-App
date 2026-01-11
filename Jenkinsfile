@@ -1,8 +1,9 @@
 
 pipeline {
     agent any
-
-environment {
+    
+   environment {
+    SCANNER_HOME = tool 'sonar-scanner'
     AWS_ACCESS_KEY_ID     = credentials('aws-access-key')
     AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
     ECR_REPO = credentials('ecr-url')
@@ -10,6 +11,7 @@ environment {
     IMAGE_NAME = "netflix-app"
     TAG = "latest"
 }
+
 
     stages {
 
@@ -19,11 +21,11 @@ environment {
             }
         }
 
-        stage('SonarQube Scan') {
+               stage('SonarQube Scan') {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
-                    sonar-scanner \
+                    $SCANNER_HOME/bin/sonar-scanner \
                       -Dsonar.projectKey=netflix-app \
                       -Dsonar.sources=. \
                       -Dsonar.host.url=http://sonarqube:9000 \
@@ -33,11 +35,12 @@ environment {
             }
         }
 
+
         stage('Build Docker Image') {
             steps {
                 sh '''
-                docker build -t $IMAGE_NAME:$TAG .
-                docker tag $IMAGE_NAME:$TAG $ECR_REPO/$IMAGE_NAME:$TAG
+                 docker build -t $IMAGE_NAME:$TAG .
+                 docker tag $IMAGE_NAME:$TAG $ECR_REPO:$TAG
                 '''
             }
         }
@@ -56,10 +59,25 @@ environment {
         stage('Push Image to ECR') {
             steps {
                 sh '''
-                docker push $ECR_REPO/$IMAGE_NAME:$TAG
+                  docker push $ECR_REPO:$TAG
                 '''
             }
         }
+        
+            stage('Deploy to EKS') {
+        steps {
+            sh '''
+            aws eks update-kubeconfig --region us-west-1 --name my-eks-cluster
+            
+            kubectl set image deployment/netflix-ui \
+                netflix-ui=$ECR_REPO:$TAG \
+                -n netflix
+            
+            kubectl rollout status deployment/netflix-ui -n netflix
+            '''
+        }
+    }
+
 
         stage('Cleanup') {
             steps {
