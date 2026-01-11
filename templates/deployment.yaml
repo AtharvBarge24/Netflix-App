@@ -1,21 +1,21 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: netflix-ui
-spec:
-  replicas: {{ .Values.replicaCount }}
-  selector:
-    matchLabels:
-      app: netflix-ui
-  template:
-    metadata:
-      labels:
-        app: netflix-ui
-    spec:
-      containers:
-        - name: netflix-ui
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - containerPort: 3000
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: netflix-ui
+# spec:
+#   replicas: {{ .Values.replicaCount }}
+#   selector:
+#     matchLabels:
+#       app: netflix-ui
+#   template:
+#     metadata:
+#       labels:
+#         app: netflix-ui
+#     spec:
+#       containers:
+#         - name: netflix-ui
+#           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+#           imagePullPolicy: {{ .Values.image.pullPolicy }}
+#           ports:
+#             - containerPort: 3000
 
