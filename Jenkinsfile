@@ -15,7 +15,7 @@ environment {
 
         stage('Clone Repo') {
             steps {
-                git branch: 'main', url: 'https://github.com/AtharvBarge24/Netflix-App.git'
+                git branch: 'feature-atharv', url: 'https://github.com/AtharvBarge24/Netflix-App.git'
             }
         }
 
